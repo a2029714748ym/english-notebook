@@ -52,7 +52,7 @@ body {
   max-width: 800px;
   margin: 0 auto;
   padding: 20px;
-  padding-bottom: 180px;
+  padding-bottom: calc(160px + env(safe-area-inset-bottom, 0px));
 }
 
 .header {
@@ -276,7 +276,7 @@ body {
 
 .add-btn {
   position: fixed;
-  bottom: 110px;
+  bottom: calc(100px + env(safe-area-inset-bottom, 0px));
   right: 30px;
   width: 60px;
   height: 60px;
@@ -793,6 +793,7 @@ body {
   display: flex;
   justify-content: space-around;
   padding: 12px 0;
+  padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px));
   box-shadow: 0 -4px 12px rgba(0,0,0,0.3);
   z-index: 99;
 }
