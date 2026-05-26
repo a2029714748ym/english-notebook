@@ -1312,6 +1312,11 @@ body {
 <!-- 添加按钮 -->
 <button class="add-btn" id="add-btn">+</button>
 
+<!-- 更新提示 -->
+<div id="update-banner" style="display:none;position:fixed;top:0;left:0;right:0;z-index:9999;background:var(--accent-blue);color:#fff;padding:12px 20px;text-align:center;font-size:14px;box-shadow:0 2px 8px rgba(0,0,0,0.3);">
+  🔄 发现新版本，<a href="javascript:location.reload()" style="color:#fff;font-weight:bold;text-decoration:underline;">点击刷新</a>
+</div>
+
 <!-- 底部导航 -->
 <nav class="bottom-nav">
   <button class="nav-item active" data-tab="words">
@@ -3061,7 +3066,27 @@ init();
 
 // 注册 Service Worker
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('./sw.js').catch(() => {});
+  navigator.serviceWorker.register('./sw.js').then(reg => {
+    // 检查是否有等待中的新 SW
+    if (reg.waiting) {
+      reg.waiting.postMessage({ type: 'SKIP_WAITING' });
+    }
+    // 监听新 SW 安装
+    reg.addEventListener('updatefound', () => {
+      const newSW = reg.installing;
+      newSW.addEventListener('statechange', () => {
+        if (newSW.state === 'installed' && navigator.serviceWorker.controller) {
+          document.getElementById('update-banner').style.display = 'block';
+        }
+      });
+    });
+  }).catch(() => {});
+  // 监听 SW 发来的更新消息
+  navigator.serviceWorker.addEventListener('message', event => {
+    if (event.data?.type === 'SW_UPDATED') {
+      document.getElementById('update-banner').style.display = 'block';
+    }
+  });
 }
 </script>
 
