@@ -2877,9 +2877,11 @@ async function searchEnglishDictionary(word) {
     html += '</div></div>';
   }
 
-  // 添加到笔记本按钮
+  // 添加到笔记本按钮 - 同时传入中文和英文释义
+  const zhMeaning = Object.keys(translations).length > 0 ? [...new Set(Object.values(translations))].slice(0, 3).join('；') : '';
+  const enMeaning = meanings[0]?.definitions?.[0]?.definition || '';
   html += `
-    <button class="btn btn-primary dict-add-btn" onclick="addWordFromDict('${entry.word}', '${phonetic}', '${meanings[0]?.definitions?.[0]?.definition || ''}')">
+    <button class="btn btn-primary dict-add-btn" onclick="addWordFromDict('${entry.word}', '${phonetic}', '${zhMeaning.replace(/'/g, "\\'")}', '${enMeaning.replace(/'/g, "\\'")}')">
       + 添加到词汇本
     </button>
   `;
@@ -2978,11 +2980,13 @@ function searchDictWord(word) {
   searchDict();
 }
 
-function addWordFromDict(word, phonetic, meaning) {
+function addWordFromDict(word, phonetic, zhMeaning, enMeaning) {
   openWordModal();
   document.getElementById('word-input').value = word;
   document.getElementById('phonetic-input').value = phonetic;
-  document.getElementById('meaning-input').value = meaning;
+  // 中文释义在前，英文释义在后
+  const combined = [zhMeaning, enMeaning].filter(Boolean).join('\n');
+  document.getElementById('meaning-input').value = combined;
 }
 
 function addToHistory(word) {
