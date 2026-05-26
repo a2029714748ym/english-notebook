@@ -2972,6 +2972,11 @@ async function init() {
 }
 
 init();
+
+// 注册 Service Worker
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('./sw.js').catch(() => {});
+}
 </script>
 
 </body>
