@@ -52,7 +52,7 @@ body {
   max-width: 800px;
   margin: 0 auto;
   padding: 20px;
-  padding-bottom: calc(160px + env(safe-area-inset-bottom, 0px));
+  /* padding-bottom 由 JS 动态设置，确保不被底部导航遮挡 */
 }
 
 .header {
@@ -3065,6 +3065,20 @@ async function init() {
 init();
 
 // 注册 Service Worker
+// 动态设置内容区底部内边距，确保不被底部导航遮挡
+function updateContentPadding() {
+  const nav = document.querySelector('.bottom-nav');
+  const app = document.querySelector('.app');
+  if (nav && app) {
+    const navHeight = nav.offsetHeight;
+    app.style.paddingBottom = (navHeight + 20) + 'px';
+  }
+}
+updateContentPadding();
+window.addEventListener('resize', updateContentPadding);
+// DOM 变化时重新计算（如切换标签页后导航栏内容变化）
+new MutationObserver(updateContentPadding).observe(document.body, { childList: true, subtree: true });
+
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('./sw.js').then(reg => {
     // 检查是否有等待中的新 SW

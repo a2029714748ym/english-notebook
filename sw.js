@@ -1,4 +1,4 @@
-const CACHE_NAME = 'english-notebook-v6';
+const CACHE_NAME = 'english-notebook-v7';
 const ASSETS = [
   './',
   './index.html',
