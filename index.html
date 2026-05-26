@@ -52,7 +52,7 @@ body {
   max-width: 800px;
   margin: 0 auto;
   padding: 20px;
-  padding-bottom: 100px;
+  padding-bottom: 140px;
 }
 
 .header {
@@ -1927,13 +1927,63 @@ async function translateToChinese(text) {
       const translated = data.responseData.translatedText;
       // 检查翻译是否有效（不是乱码或原样返回）
       if (translated && translated !== text && !translated.includes('MYMEMORY')) {
-        return translated;
+        // 优化翻译结果，使其更简洁易懂
+        return simplifyTranslation(translated);
       }
     }
     return null;
   } catch {
     return null;
   }
+}
+
+function simplifyTranslation(text) {
+  // 移除多余的修饰词和冗余信息
+  let simplified = text;
+
+  // 移除常见的冗余前缀
+  const redundantPrefixes = [
+    '是指', '意思是', '表示', '指的是', '就是',
+    '用来', '用于', '可以用来', '可以用于'
+  ];
+
+  for (const prefix of redundantPrefixes) {
+    if (simplified.startsWith(prefix)) {
+      simplified = simplified.substring(prefix.length);
+    }
+  }
+
+  // 移除常见的冗余后缀
+  const redundantSuffixes = [
+    '的意思', '的含义', '的定义', '等',
+    '等等', '之类', '什么的'
+  ];
+
+  for (const suffix of redundantSuffixes) {
+    if (simplified.endsWith(suffix)) {
+      simplified = simplified.substring(0, simplified.length - suffix.length);
+    }
+  }
+
+  // 移除多余的标点符号
+  simplified = simplified.replace(/^[，,、：:；;。.！!？?\s]+/, '');
+  simplified = simplified.replace(/[，,、：:；;。.！!？?\s]+$/, '');
+
+  // 如果翻译结果太长，尝试提取核心含义
+  if (simplified.length > 20) {
+    // 尝试找到第一个逗号或分号前的内容
+    const firstBreak = simplified.search(/[，,；;]/);
+    if (firstBreak > 0 && firstBreak < 20) {
+      simplified = simplified.substring(0, firstBreak);
+    }
+  }
+
+  // 确保首字母大写（如果适用）
+  if (simplified.length > 0) {
+    simplified = simplified.charAt(0).toUpperCase() + simplified.slice(1);
+  }
+
+  return simplified.trim() || text;
 }
 
 // 按回车键自动查询
@@ -2744,15 +2794,33 @@ async function searchEnglishDictionary(word) {
     </div>
   `;
 
+  // 中文释义（放在前面，更易懂）
+  if (Object.keys(translations).length > 0) {
+    html += '<div class="dict-section">';
+    html += '<div class="dict-section-title">中文释义</div>';
+
+    // 收集所有翻译结果
+    const allTranslations = Object.values(translations);
+    const uniqueTranslations = [...new Set(allTranslations)].slice(0, 3);
+
+    html += `
+      <div class="dict-translation">
+        <div class="dict-translation-text">${uniqueTranslations.join('；')}</div>
+      </div>
+    `;
+
+    html += '</div>';
+  }
+
   // 英英释义
   html += '<div class="dict-section">';
-  html += '<div class="dict-section-title">英英释义</div>';
+  html += '<div class="dict-section-title">英文释义</div>';
 
   for (const meaning of meanings) {
     html += `<div class="dict-pos">`;
     html += `<span class="dict-pos-tag">${meaning.partOfSpeech}</span>`;
 
-    for (const def of meaning.definitions?.slice(0, 3) || []) {
+    for (const def of meaning.definitions?.slice(0, 2) || []) {
       html += `<div class="dict-definition">`;
       html += `<p class="def-text">${def.definition}</p>`;
       if (def.example) {
@@ -2765,24 +2833,6 @@ async function searchEnglishDictionary(word) {
   }
 
   html += '</div>';
-
-  // 中文翻译
-  if (Object.keys(translations).length > 0) {
-    html += '<div class="dict-section">';
-    html += '<div class="dict-section-title">中文释义</div>';
-
-    const firstDef = meanings[0]?.definitions?.[0]?.definition;
-    if (firstDef && translations[firstDef]) {
-      html += `
-        <div class="dict-translation">
-          <div class="dict-translation-label">主要释义</div>
-          <div class="dict-translation-text">${translations[firstDef]}</div>
-        </div>
-      `;
-    }
-
-    html += '</div>';
-  }
 
   // 同义词
   if (synonyms.length > 0) {
