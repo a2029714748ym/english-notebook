@@ -3051,6 +3051,12 @@ function saveSettings() {
 // ==================== 腾讯云翻译API ====================
 async function tencentTranslate(text, from = 'en', to = 'zh') {
   const settings = getSettings();
+  console.log('[腾讯云翻译] 开始调用，配置状态:', {
+    secretId: settings.tencentSecretId ? '已配置' : '未配置',
+    secretKey: settings.tencentSecretKey ? '已配置' : '未配置',
+    service: settings.translationService
+  });
+
   if (!settings.tencentSecretId || !settings.tencentSecretKey) {
     throw new Error('请先配置腾讯云API密钥');
   }
@@ -3095,6 +3101,7 @@ async function tencentTranslate(text, from = 'en', to = 'zh') {
   const authorization = `${algorithm} Credential=${settings.tencentSecretId}/${credentialScope}, SignedHeaders=${signedHeaders}, Signature=${signature}`;
 
   // 发送请求
+  console.log('[腾讯云翻译] 发送请求到腾讯云API...');
   const response = await fetch('https://tmt.tencentcloudapi.com', {
     method: 'POST',
     headers: {
@@ -3109,15 +3116,20 @@ async function tencentTranslate(text, from = 'en', to = 'zh') {
     body: payload
   });
 
+  console.log('[腾讯云翻译] 响应状态:', response.status);
+
   if (!response.ok) {
     throw new Error('翻译请求失败');
   }
 
   const data = await response.json();
+  console.log('[腾讯云翻译] 响应数据:', data);
+
   if (data.Response?.Error) {
     throw new Error(data.Response.Error.Message || '翻译失败');
   }
 
+  console.log('[腾讯云翻译] 翻译成功:', data.Response?.TargetText);
   return data.Response?.TargetText || '';
 }
 
