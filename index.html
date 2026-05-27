@@ -1555,17 +1555,9 @@ body {
       <button class="close-btn" onclick="closeModal('settings-modal')">&times;</button>
     </div>
     <div class="form-group">
-      <label class="form-label">腾讯云 SecretId</label>
-      <input type="text" class="form-input" id="tencent-secret-id" placeholder="输入腾讯云SecretId">
-    </div>
-    <div class="form-group">
-      <label class="form-label">腾讯云 SecretKey</label>
-      <input type="password" class="form-input" id="tencent-secret-key" placeholder="输入腾讯云SecretKey">
-    </div>
-    <div class="form-group">
       <label class="form-label">翻译服务</label>
       <select class="form-select" id="translation-service">
-        <option value="tencent">腾讯云翻译</option>
+        <option value="tencent">腾讯云翻译（推荐）</option>
         <option value="mymemory">MyMemory（免费）</option>
       </select>
     </div>
@@ -2034,8 +2026,8 @@ async function lookupWord() {
 async function translateToChinese(text) {
   const settings = getSettings();
 
-  // 优先使用腾讯云翻译
-  if (settings.translationService === 'tencent' && settings.tencentSecretId && settings.tencentSecretKey) {
+  // 优先使用腾讯云翻译（通过Vercel代理）
+  if (settings.translationService === 'tencent') {
     try {
       const result = await tencentTranslate(text, 'en', 'zh');
       if (result) {
@@ -3021,141 +3013,59 @@ function renderAchievements(stats) {
 // ==================== 设置管理 ====================
 function getSettings() {
   return {
-    tencentSecretId: localStorage.getItem('tencent_secret_id') || '',
-    tencentSecretKey: localStorage.getItem('tencent_secret_key') || '',
-    translationService: localStorage.getItem('translation_service') || 'mymemory'
+    translationService: localStorage.getItem('translation_service') || 'tencent'
   };
 }
 
 function openSettings() {
   const settings = getSettings();
-  document.getElementById('tencent-secret-id').value = settings.tencentSecretId;
-  document.getElementById('tencent-secret-key').value = settings.tencentSecretKey;
   document.getElementById('translation-service').value = settings.translationService;
   document.getElementById('settings-modal').classList.add('active');
 }
 
 function saveSettings() {
-  const secretId = document.getElementById('tencent-secret-id').value.trim();
-  const secretKey = document.getElementById('tencent-secret-key').value.trim();
   const service = document.getElementById('translation-service').value;
 
-  localStorage.setItem('tencent_secret_id', secretId);
-  localStorage.setItem('tencent_secret_key', secretKey);
   localStorage.setItem('translation_service', service);
 
   showToast('设置已保存');
   closeModal('settings-modal');
 }
 
-// ==================== 腾讯云翻译API ====================
+// ==================== 腾讯云翻译API（通过Vercel代理） ====================
 async function tencentTranslate(text, from = 'en', to = 'zh') {
   const settings = getSettings();
   console.log('[腾讯云翻译] 开始调用，配置状态:', {
-    secretId: settings.tencentSecretId ? '已配置' : '未配置',
-    secretKey: settings.tencentSecretKey ? '已配置' : '未配置',
     service: settings.translationService
   });
 
-  if (!settings.tencentSecretId || !settings.tencentSecretKey) {
-    throw new Error('请先配置腾讯云API密钥');
-  }
+  // 使用Vercel Serverless函数作为代理
+  const apiUrl = '/api/translate';
 
-  const service = 'tmt';
-  const action = 'TextTranslate';
-  const version = '2018-03-21';
-  const region = 'ap-guangzhou';
-  const timestamp = Math.floor(Date.now() / 1000);
-  const date = new Date(timestamp * 1000).toISOString().split('T')[0];
-
-  // 构建请求体
-  const payload = JSON.stringify({
-    SourceText: text,
-    Source: from,
-    Target: to,
-    ProjectId: 0
-  });
-
-  // 构建规范请求串
-  const httpRequestMethod = 'POST';
-  const canonicalUri = '/';
-  const canonicalQueryString = '';
-  const canonicalHeaders = `content-type:application/json\nhost:tmt.tencentcloudapi.com\n`;
-  const signedHeaders = 'content-type;host';
-  const hashedPayload = await sha256(payload);
-  const canonicalRequest = `${httpRequestMethod}\n${canonicalUri}\n${canonicalQueryString}\n${canonicalHeaders}\n${signedHeaders}\n${hashedPayload}`;
-
-  // 构建待签名字符串
-  const algorithm = 'TC3-HMAC-SHA256';
-  const credentialScope = `${date}/${service}/tc3_request`;
-  const hashedCanonicalRequest = await sha256(canonicalRequest);
-  const stringToSign = `${algorithm}\n${timestamp}\n${credentialScope}\n${hashedCanonicalRequest}`;
-
-  // 计算签名
-  const secretDate = await hmacSHA256(date, `TC3${settings.tencentSecretKey}`);
-  const secretService = await hmacSHA256(service, secretDate);
-  const secretSigning = await hmacSHA256('tc3_request', secretService);
-  const signature = await hmacSHA256(stringToSign, secretSigning);
-
-  // 构建Authorization头
-  const authorization = `${algorithm} Credential=${settings.tencentSecretId}/${credentialScope}, SignedHeaders=${signedHeaders}, Signature=${signature}`;
-
-  // 发送请求（使用CORS代理解决跨域问题）
-  console.log('[腾讯云翻译] 发送请求到腾讯云API...');
-  const proxyUrl = 'https://corsproxy.io/?' + encodeURIComponent('https://tmt.tencentcloudapi.com');
-  const response = await fetch(proxyUrl, {
+  console.log('[腾讯云翻译] 发送请求到Vercel API...');
+  const response = await fetch(apiUrl, {
     method: 'POST',
     headers: {
-      'Content-Type': 'application/json',
-      'Authorization': authorization,
-      'X-TC-Action': action,
-      'X-TC-Version': version,
-      'X-TC-Timestamp': timestamp.toString(),
-      'X-TC-Region': region
+      'Content-Type': 'application/json'
     },
-    body: payload
+    body: JSON.stringify({
+      text: text,
+      from: from,
+      to: to
+    })
   });
 
   console.log('[腾讯云翻译] 响应状态:', response.status);
 
   if (!response.ok) {
-    throw new Error('翻译请求失败');
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.error || '翻译请求失败');
   }
 
   const data = await response.json();
-  console.log('[腾讯云翻译] 响应数据:', data);
+  console.log('[腾讯云翻译] 翻译成功:', data.translation);
 
-  if (data.Response?.Error) {
-    throw new Error(data.Response.Error.Message || '翻译失败');
-  }
-
-  console.log('[腾讯云翻译] 翻译成功:', data.Response?.TargetText);
-  return data.Response?.TargetText || '';
-}
-
-async function sha256(message) {
-  const encoder = new TextEncoder();
-  const data = encoder.encode(message);
-  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-  const hashArray = Array.from(new Uint8Array(hashBuffer));
-  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-}
-
-async function hmacSHA256(message, secret) {
-  const encoder = new TextEncoder();
-  const keyData = encoder.encode(secret);
-  const messageData = encoder.encode(message);
-
-  const cryptoKey = await crypto.subtle.importKey(
-    'raw',
-    keyData,
-    { name: 'HMAC', hash: 'SHA-256' },
-    false,
-    ['sign']
-  );
-
-  const signature = await crypto.subtle.sign('HMAC', cryptoKey, messageData);
-  return btoa(String.fromCharCode(...new Uint8Array(signature)));
+  return data.translation || '';
 }
 
 // ==================== 字典模块 ====================
