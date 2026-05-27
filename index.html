@@ -1996,39 +1996,20 @@ async function lookupWord() {
 }
 
 async function translateToChinese(text) {
+  // 使用MyMemory翻译API（金山词霸已需要key，不再免费）
   try {
-    // 使用金山词霸免费词典API
     const response = await fetch(
-      `https://dict-co.iciba.com/api/dictionary.php?w=${encodeURIComponent(text)}&type=json`
-    );
-
-    if (response.ok) {
-      const data = await response.json();
-      if (data.word_name && data.symbols && data.symbols[0]) {
-        const symbol = data.symbols[0];
-        // 获取中文释义
-        if (symbol.parts && symbol.parts.length > 0) {
-          const meanings = symbol.parts.map(p => p.means ? p.means.join('；') : '').filter(Boolean);
-          if (meanings.length > 0) {
-            return meanings[0];
-          }
-        }
-      }
-    }
-
-    // 如果金山词霸失败，使用MyMemory翻译作为备选
-    const response2 = await fetch(
       `https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=en|zh`
     );
 
-    if (!response2.ok) {
-      throw new Error('翻译失败');
+    if (!response.ok) {
+      return null;
     }
 
-    const data2 = await response2.json();
+    const data = await response.json();
 
-    if (data2.responseStatus === 200 && data2.responseData?.translatedText) {
-      const translated = data2.responseData.translatedText;
+    if (data.responseStatus === 200 && data.responseData?.translatedText) {
+      const translated = data.responseData.translatedText;
       if (translated && translated !== text && !translated.includes('MYMEMORY')) {
         return simplifyTranslation(translated);
       }
