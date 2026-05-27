@@ -3100,13 +3100,13 @@ async function tencentTranslate(text, from = 'en', to = 'zh') {
   // 构建Authorization头
   const authorization = `${algorithm} Credential=${settings.tencentSecretId}/${credentialScope}, SignedHeaders=${signedHeaders}, Signature=${signature}`;
 
-  // 发送请求
+  // 发送请求（使用CORS代理解决跨域问题）
   console.log('[腾讯云翻译] 发送请求到腾讯云API...');
-  const response = await fetch('https://tmt.tencentcloudapi.com', {
+  const proxyUrl = 'https://corsproxy.io/?' + encodeURIComponent('https://tmt.tencentcloudapi.com');
+  const response = await fetch(proxyUrl, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'Host': 'tmt.tencentcloudapi.com',
       'Authorization': authorization,
       'X-TC-Action': action,
       'X-TC-Version': version,
